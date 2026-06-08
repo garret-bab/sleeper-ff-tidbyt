@@ -9,5 +9,10 @@ $HistoricalWeekOverride = ""
 
 $TidbytDeviceId = "YOUR_TIDBYT_DEVICE_ID"
 $TidbytApiToken = "YOUR_TIDBYT_API_TOKEN"
-$InstallationId = "sleeper-ff"
-$RefreshSeconds = 4
+$InstallationId = "sleeperff"
+
+# How long each standings page remains active before switching.
+$DataRefreshSeconds = 600
+
+# How long to wait after a failed render or push.
+$RetrySeconds = 5

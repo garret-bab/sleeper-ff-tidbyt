@@ -7,7 +7,18 @@ load("http.star", "http")
 
 DEFAULT_LEAGUE_ID = "1312098665363419136"
 TEAMS_PER_PAGE = 4
+FRAME_DELAY_MS = 100
 
+# Keep the returned names stationary before changing pages.
+PAGE_HOLD_FRAMES = 20
+
+# Begin pushing the next page shortly after the hold begins.
+# This leaves room for normal API and device latency.
+SWITCH_BUFFER_FRAMES = 20
+
+STANDINGS_NAME_ALIASES = {
+    "Monty's Wedding Crashers": "Monty's Crashers",
+}
 
 # ============================================================
 # HTTP HELPERS
@@ -249,6 +260,18 @@ def standings_record_widget(entry):
         children = children,
     )
 
+def get_standings_display_name(team_name):
+    """
+    Use compact display aliases for team names that are too long
+    to complete their marquee animation on the physical Tidbyt.
+
+    The original Sleeper team name remains unchanged internally.
+    """
+    return STANDINGS_NAME_ALIASES.get(
+        team_name,
+        team_name,
+    )
+
 def standings_row(rank, entry):
     """
     Render one standings row.
@@ -292,7 +315,9 @@ def standings_row(rank, entry):
                         align = "start",
                         delay = 20,
                         child = render.Text(
-                            content = entry["team_name"],
+                            content = get_standings_display_name(
+                                entry["team_name"],
+                            ),
                             font = "CG-pixel-3x5-mono",
                             color = "#ffffff",
                         ),
@@ -310,7 +335,7 @@ def standings_row(rank, entry):
 
 def render_standings_page(standings, page_number):
     """
-    Render four ranked teams on one Tidbyt screen.
+    Render four ranked teams on one reusable standings page.
     """
     total_pages = (
         len(standings) + TEAMS_PER_PAGE - 1
@@ -347,16 +372,112 @@ def render_standings_page(standings, page_number):
             )
         )
 
-    return render.Root(
-        child = render.Column(
-            children = rows,
-        ),
+    return render.Column(
+        children = rows,
     )
 
+def render_single_standings_page(standings, page_number):
+    """
+    Render one standings page for direct API pushing.
 
-# ============================================================
-# MAIN PROGRAM
-# ============================================================
+    Print the recommended controller switch time so PowerShell
+    can push the next page after the names return to their initial
+    positions but before a second scroll cycle begins.
+    """
+    page = render_standings_page(
+        standings,
+        page_number,
+    )
+
+    page_with_hold = add_hold_after(
+        page,
+        PAGE_HOLD_FRAMES,
+    )
+
+    switch_after_frames = (
+        page.frame_count() +
+        SWITCH_BUFFER_FRAMES
+    )
+
+    switch_after_ms = (
+        switch_after_frames *
+        FRAME_DELAY_MS
+    )
+
+    print(
+        "PAGE_SWITCH_AFTER_MS=%d" %
+        switch_after_ms
+    )
+
+    return render.Root(
+        delay = FRAME_DELAY_MS,
+        child = page_with_hold,
+    )
+
+def add_hold_after(widget, hold_frames):
+    """
+    Extend a widget's animation by holding its final frame.
+
+    The transparent animation controls the total frame count.
+    The visible standings page remains on its final frame during
+    the additional hold period.
+    """
+    transparent_frames = []
+
+    for _ in range(
+        widget.frame_count() + hold_frames
+    ):
+        transparent_frames.append(
+            render.Box(
+                width = 1,
+                height = 1,
+            )
+        )
+
+    return render.Stack(
+        children = [
+            widget,
+
+            render.Animation(
+                children = transparent_frames,
+            ),
+        ],
+    )
+
+def render_standings_rotation(standings):
+    """
+    Render both standings pages as one animated Tidbyt installation.
+
+    Each page scrolls normally, returns to its initial position,
+    remains readable for an additional 20 frames, and then switches.
+    """
+    page_one = render_standings_page(
+        standings,
+        1,
+    )
+
+    page_two = render_standings_page(
+        standings,
+        2,
+    )
+
+    return render.Root(
+        delay = 100,
+        show_full_animation = True,
+        child = render.Sequence(
+            children = [
+                add_hold_after(
+                    page_one,
+                    PAGE_HOLD_FRAMES,
+                ),
+
+                add_hold_after(
+                    page_two,
+                    PAGE_HOLD_FRAMES,
+                ),
+            ],
+        ),
+    )
 
 def main(config):
     league_id = config.get(
@@ -364,15 +485,22 @@ def main(config):
         DEFAULT_LEAGUE_ID,
     )
 
-    standings_page = int(
-        config.get(
-            "standings_page",
-            "1",
-        )
+    requested_page = config.get(
+        "standings_page",
+        "",
     )
 
+    if requested_page:
+        standings_page = int(requested_page)
+    else:
+        standings_page = 0
+
     print("League ID:", league_id)
-    print("Requested standings page:", standings_page)
+
+    if standings_page > 0:
+        print("Requested standings page:", standings_page)
+    else:
+        print("Requested standings display: rotating pages")
 
     users = get_json(
         "https://api.sleeper.app/v1/league/%s/users" %
@@ -403,7 +531,12 @@ def main(config):
             )
         )
 
-    return render_standings_page(
+    if standings_page > 0:
+        return render_single_standings_page(
+            standings,
+            standings_page,
+        )
+
+    return render_standings_rotation(
         standings,
-        standings_page,
     )

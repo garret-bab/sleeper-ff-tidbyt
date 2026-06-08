@@ -1,0 +1,8 @@
+# Local credentials
+config/settings.ps1
+
+# Generated Tidbyt images
+*.webp
+
+# Temporary files
+*.tmp

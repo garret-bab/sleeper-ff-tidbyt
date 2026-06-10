@@ -16,3 +16,5 @@ $DataRefreshSeconds = 600
 
 # How long to wait after a failed render or push.
 $RetrySeconds = 5
+
+$ShowStandings = $true

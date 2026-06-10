@@ -17,4 +17,8 @@ $DataRefreshSeconds = 600
 # How long to wait after a failed render or push.
 $RetrySeconds = 5
 
+# Show the standings page in the rotation.
 $ShowStandings = $true
+
+# Override the league ID when testing historical weeks.
+$HistoricalLeagueIdOverride = ""

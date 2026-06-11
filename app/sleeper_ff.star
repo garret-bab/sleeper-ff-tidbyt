@@ -177,6 +177,36 @@ def get_record_text(entry):
         entry["losses"],
     )
 
+def format_matchup_points(points):
+    """
+    Display fantasy scores with exactly two decimal places.
+
+    Pixlet Starlark does not support Python-style formatting
+    such as "%.2f", so build the decimal text manually.
+    """
+    scaled_points = int(
+        (float(points) * 100) + 0.5
+    )
+
+    sign = ""
+
+    if scaled_points < 0:
+        sign = "-"
+        scaled_points = -scaled_points
+
+    whole_points = scaled_points // 100
+    decimal_points = scaled_points % 100
+
+    decimal_text = str(decimal_points)
+
+    if decimal_points < 10:
+        decimal_text = "0" + decimal_text
+
+    return "%s%d.%s" % (
+        sign,
+        whole_points,
+        decimal_text,
+    )
 
 # ============================================================
 # VISUAL HELPERS
@@ -333,6 +363,131 @@ def standings_row(rank, entry):
         ),
     )
 
+def render_matchup_page(
+    left_name,
+    left_points,
+    right_name,
+    right_points,
+    week,
+):
+    """
+    Render one static fantasy matchup screen.
+
+    This first version intentionally excludes avatars.
+    We are validating the text layout before adding images.
+    """
+    left_score_value = float(left_points)
+    right_score_value = float(right_points)
+
+    left_score_color = "#ffffff"
+    right_score_color = "#ffffff"
+
+    if left_score_value > right_score_value:
+        left_score_color = ""#7CFC00""
+        right_score_color = "#ff5c5c"
+        
+    elif right_score_value > left_score_value:
+        left_score_color = "#ff5c5c"
+        right_score_color = "#7CFC00"
+    
+    return render.Column(
+        children = [
+            render.Box(
+                width = 64,
+                height = 6,
+                child = render.Text(
+                    content = "MATCHUP  WEEK %s" % week,
+                    font = "CG-pixel-3x5-mono",
+                    color = "#00ceb8",
+                ),
+            ),
+
+            render.Box(height = 2),
+
+            render.Row(
+                children = [
+                    render.Box(
+                        width = 64,
+                        height = 6,
+                        child = render.Row(
+                            children = [
+                                render.Box(
+                                    width = 29,
+                                    height = 6,
+                                    child = render.Text(
+                                        content = left_name,
+                                        font = "CG-pixel-3x5-mono",
+                                        color = "#ffffff",
+                                    ),
+                                ),
+
+                                render.Box(width = 6),
+
+                                render.Box(
+                                    width = 29,
+                                    height = 6,
+                                    child = render.Text(
+                                        content = right_name,
+                                        font = "CG-pixel-3x5-mono",
+                                        color = "#ffffff",
+                                    ),
+                                ),
+                            ],
+                        ),
+                    ),
+                ],
+            ),
+
+            render.Box(height = 2),
+
+            render.Row(
+                children = [
+                    render.Box(
+                        width = 64,
+                        height = 6,
+                        child = render.Row(
+                            children = [
+                                render.Box(
+                                    width = 27,
+                                    height = 6,
+                                    child = render.Text(
+                                        content = format_matchup_points(
+                                            left_points,
+                                        ),
+                                        font = "CG-pixel-3x5-mono",
+                                        color = left_score_color,
+                                    ),
+                                ),
+
+                                render.Box(
+                                    width = 10,
+                                    height = 6,
+                                    child = render.Text(
+                                        content = "VS",
+                                        font = "CG-pixel-3x5-mono",
+                                        color = "#ffffff",
+                                    ),
+                                ),
+
+                                render.Box(
+                                    width = 27,
+                                    height = 6,
+                                    child = render.Text(
+                                        content = format_matchup_points(
+                                            right_points,
+                                        ),
+                                        font = "CG-pixel-3x5-mono",
+                                        color = right_score_color,
+                                    ),
+                                ),
+                            ],
+                        ),
+                    ),
+                ],
+            ),
+        ],
+    )
+
 def render_standings_page(standings, page_number):
     """
     Render four ranked teams on one reusable standings page.
@@ -485,6 +640,13 @@ def main(config):
         DEFAULT_LEAGUE_ID,
     )
 
+    requested_screen = config.get(
+    "screen",
+    "standings",
+    )   
+
+    print("Requested screen:", requested_screen)
+
     requested_page = config.get(
         "standings_page",
         "",
@@ -494,6 +656,18 @@ def main(config):
         standings_page = int(requested_page)
     else:
         standings_page = 0
+
+    if requested_screen == "matchup":
+        return render.Root(
+            delay = FRAME_DELAY_MS,
+            child = render_matchup_page(
+                config.get("left_name", "LEFT"),
+                config.get("left_points", "0"),
+                config.get("right_name", "RIGHT"),
+                config.get("right_points", "0"),
+                config.get("week", "0"),
+            ),
+        )
 
     print("League ID:", league_id)
 

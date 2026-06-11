@@ -10,12 +10,12 @@ BASE_URL = "https://api.sleeper.app/v1"
 MATCHUP_DISPLAY_NAME_MAX_CHARS = 12
 
 MATCHUP_NAME_ALIASES = {
-    "The Grand Experiment": "Grand Exp.",
-    "Buster Don'Tavian Vick": "Buster Vick",
-    "Sunnyvale 69ers": "Sunnyvale",
-    "Monty's Wedding Crashers": "Monty's WC",
-    "Gary's Goobers": "Gary's G.",
-    "Ayahuasca Dream Team": "Ayahuasca",
+    "The Grand Experiment": "Grand",
+    "Buster Don'Tavian Vick": "Buster",
+    "Sunnyvale 69ers": "Sunny",
+    "Monty's Wedding Crashers": "Monty",
+    "Gary's Goobers": "Goobers",
+    "Ayahuasca Dream Team": "Ayahuas",
 }
 
 def get_json(path: str):
